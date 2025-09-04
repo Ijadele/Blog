@@ -55,7 +55,7 @@ const imagePaths = []
   }
 };
 
-getPosts = async (req, res, next) => {
+const getPosts = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, q, tag, author, sort = "-createdAt", published } = req.query;
     const p = Math.max(parseInt(page) || 1, 1);
@@ -68,8 +68,8 @@ getPosts = async (req, res, next) => {
     if (typeof published !== "undefined") filter.isPublished = published === "true";
 
     const [data, total] = await Promise.all([
-      Post.find(filter).populate("author", "name role").sort(sort).skip((p - 1) * l).limit(l),
-      Post.countDocuments(filter),
+      postModel.find(filter).populate("author", "name role").sort(sort).skip((p - 1) * l).limit(l),
+      postModel.countDocuments(filter),
     ]);
 
     res.json({ success: true, message: "Posts fetched", data, pagination: { page: p, limit: l, total, pages: Math.ceil(total / l) } });
@@ -77,7 +77,7 @@ getPosts = async (req, res, next) => {
 };
 
 const getPostById = async (req, res, next) => {
-  const { id } = req.query;
+  const { id } = req.params;
   try {
     const post = await postModel.findById(id).populate("author", "email");
     if (!post) {
@@ -90,7 +90,7 @@ const getPostById = async (req, res, next) => {
 };
 
 const updatePost = async (req, res, next) => {
-  const { id } = req.query;
+  const { id } = req.params;
   const { title, content, published } = req.body;
 
   try {
@@ -99,7 +99,7 @@ const updatePost = async (req, res, next) => {
       return res.status(404).json({ message: "Post not found" });
     }
     // check if it is the owner
-    if (post.author.toString() !== req.user._id.toString()) {
+    if (!post.author ||post.author.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "You are not authorized to update this post" });
     }
 
@@ -115,7 +115,7 @@ const updatePost = async (req, res, next) => {
 };
 
 const deletePost = async (req, res, next) => {
-  const { id } = req.query;
+  const { id } = req.params;
 
   try {
     const post = await postModel.findById(id);
@@ -124,7 +124,7 @@ const deletePost = async (req, res, next) => {
     }
 
     // check if it is the owner
-    if (post.author.toString() !== req.user._id.toString()) {
+    if (post.author.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "You are not authorized to delete this post" });
     }
 
